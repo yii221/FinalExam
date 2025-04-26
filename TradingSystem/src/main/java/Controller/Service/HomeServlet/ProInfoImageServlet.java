@@ -1,0 +1,83 @@
+package Controller.Service.HomeServlet;
+
+import Controller.Dao.HomeDao.ProInfoImageDao;
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
+
+import javax.servlet.ServletException;
+import javax.servlet.annotation.WebServlet;
+import javax.servlet.http.HttpServlet;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+
+@WebServlet("/ProInfoImageServlet")
+public class ProInfoImageServlet extends HttpServlet {
+
+    private Gson gson = new Gson();
+    @Override
+    protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        // 统一设置响应头
+        resp.setHeader("Access-Control-Allow-Origin", "http://localhost:8081");
+        resp.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+        resp.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+        resp.setHeader("Access-Control-Allow-Credentials", "true");
+        resp.setStatus(HttpServletResponse.SC_OK);
+
+        resp.setContentType("application/json;charset=UTF-8");
+
+        try {
+            // 读取并解析JSON请求体
+            BufferedReader reader = req.getReader();
+            JsonObject jsonObject = gson.fromJson(reader, JsonObject.class);
+
+            if (jsonObject == null || !jsonObject.has("proid")) {
+                sendErrorResponse(resp, 400, "缺少proid参数");
+                return;
+            }
+
+            int proid = jsonObject.get("proid").getAsInt();
+            List<String> proImage = new ArrayList<String>();
+            ProInfoImageDao proInfoImageDao = new ProInfoImageDao();
+            proImage=proInfoImageDao.fetchImage(proid);
+
+            if (proImage == null) {
+                sendErrorResponse(resp, 404, "未找到指定商品");
+                return;
+            }
+
+            // 统一使用Gson序列化
+            resp.getWriter().write(gson.toJson(proImage));
+
+        } catch (Exception e) {
+            sendErrorResponse(resp, 500, "服务器错误: " + e.getMessage());
+        }
+    }
+
+    @Override
+    protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        doPost(req, resp);
+    }
+
+    @Override
+    protected void doOptions(HttpServletRequest req, HttpServletResponse resp)
+            throws ServletException, IOException {
+        resp.setHeader("Access-Control-Allow-Origin", "http://localhost:8081");
+        resp.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+        resp.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+        resp.setHeader("Access-Control-Allow-Credentials", "true");
+        resp.setStatus(HttpServletResponse.SC_OK);
+    }
+
+    private void sendErrorResponse(HttpServletResponse resp, int code, String message)
+            throws IOException {
+        resp.setStatus(code);
+        JsonObject error = new JsonObject();
+        error.addProperty("code", code);
+        error.addProperty("message", message);
+        resp.getWriter().write(gson.toJson(error));
+    }
+}
